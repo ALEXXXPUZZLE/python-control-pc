@@ -5,7 +5,7 @@ import subprocess
 from dotenv import load_dotenv
 import os
 from pathlib import Path
-
+import winreg
 
 
 
@@ -54,7 +54,8 @@ def start_menu(message):
     bt3 = types.KeyboardButton('Brave🥶')
     bt4 = types.KeyboardButton('Restart🤫')
     bt5 = types.KeyboardButton('Off pc🫪')
-    markup.add(bt1, bt2, bt3, bt4, bt5)
+    bt6 = types.KeyboardButton('Change wallpaper📃')
+    markup.add(bt1, bt2, bt3, bt4, bt5, bt6)
 
 
     bot.send_message(message.chat.id, 'Choose variant', reply_markup=markup)
@@ -95,8 +96,40 @@ def check_password(message):
     else:
         bot.send_message(message.chat.id, 'Wrong password')
 
+@bot.message_handler(func=lambda message: message.text in ['Change wallpaper📃'])
+def get_photo(message):
+    msg = bot.send_message(message.chat.id, 'send photo')
+    bot.register_next_step_handler(msg, change_wallpaper)
+def change_wallpaper(message):
+        try:
+
+            if message.content_type == 'photo':
+
+                file_id = message.photo[-1].file_id
+
+            elif message.content_type == 'document':
+                if not message.document.mime_type.startswith('image/'):
+                    bot.reply_to(message, "Send photo!")
+                    return
+                file_id = message.document.file_id
 
 
+            file_info = bot.get_file(file_id)
+            downloaded_file = bot.download_file(file_info.file_path)
+
+
+            wallpaper_path = os.path.abspath("current_wallpaper.jpg")
+            with open(wallpaper_path, 'wb') as new_file:
+                new_file.write(downloaded_file)
+
+
+
+            ctypes.windll.user32.SystemParametersInfoW(20, 0, wallpaper_path, 3)
+
+            bot.reply_to(message, "Wallpaper successful changed!")
+
+        except Exception as e:
+            bot.reply_to(message, f"Erorr: {e}")
 
 
 
