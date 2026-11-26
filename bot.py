@@ -5,7 +5,7 @@ import subprocess
 from dotenv import load_dotenv
 import os
 from pathlib import Path
-import winreg
+
 
 
 
@@ -23,11 +23,31 @@ brave_path = r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.ex
 
 
 
-
-
 SPI_SETDESKWALLPAPER = 0x0014
 SPIF_UPDATEINIFILE = 0x01
 SPIF_SENDCHANGE = 0x02
+
+def launch_by_name(app_name):
+
+    start_menu_dirs = [
+        Path(os.environ["PROGRAMDATA"]) / "Microsoft/Windows/Start Menu/Programs",
+        Path(os.environ["APPDATA"]) / "Microsoft/Windows/Start Menu/Programs",
+    ]
+    
+    app_name = app_name.lower()
+    
+    for folder in start_menu_dirs:
+
+        for shortcut in folder.rglob("*.lnk"):
+            if app_name in shortcut.stem.lower():
+                os.startfile(shortcut)
+                return True
+                
+
+    return False
+
+
+
 
 
 def set_wallpaper(image_path: str) -> None:
@@ -55,7 +75,8 @@ def start_menu(message):
     bt4 = types.KeyboardButton('Restart🤫')
     bt5 = types.KeyboardButton('Off pc🫪')
     bt6 = types.KeyboardButton('Change wallpaper📃')
-    markup.add(bt1, bt2, bt3, bt4, bt5, bt6)
+    bt7 = types.KeyboardButton('Lauch program by name🚀')
+    markup.add(bt1, bt2, bt3, bt4, bt5, bt6, bt7)
 
 
     bot.send_message(message.chat.id, 'Choose variant', reply_markup=markup)
@@ -132,7 +153,14 @@ def change_wallpaper(message):
             bot.reply_to(message, f"Erorr: {e}")
 
 
-
-print("Feature branch")
-print("Git practice")
+@bot.message_handler(func=lambda message: message.text in ['Lauch program by name🚀'])
+def get_name_of_prog(message):
+    msg = bot.send_message(message.chat.id, 'Send program name')
+    bot.register_next_step_handler(msg, launch)
+def launch(message):
+    launch_by_name(message.text)
+    if launch_by_name(message.text) == True:
+        bot.send_message(message.chat.id, f'Successful! opens {message.text}')
+    else:
+        bot.send_message(message.chat.id, 'Erorr')
 bot.infinity_polling()
