@@ -5,8 +5,10 @@ import subprocess
 from dotenv import load_dotenv
 import os
 from pathlib import Path
-
-
+import validators
+import webbrowser
+import win32api
+import win32con
 
 
 load_dotenv()
@@ -21,11 +23,22 @@ bot = telebot.TeleBot(BOT_TOKEN)
 
 brave_path = r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe"
 
-
+webbrowser.register("brave", None, webbrowser.BackgroundBrowser(brave_path), preferred=True)
 
 SPI_SETDESKWALLPAPER = 0x0014
 SPIF_UPDATEINIFILE = 0x01
 SPIF_SENDCHANGE = 0x02
+
+def set_resolution(width: int, height: int, bits_per_pel: int=32):
+    devmode = win32api.EnumDisplaySettings(None, win32con.ENUM_CURRENT_SETTINGS)
+    devmode.PelsWidth = width                                                         # set resoliton func
+    devmode.PelsHeight = height
+    devmode.BitsPerPel = bits_per_pel
+    devmode.Fields = (
+        win32con.DM_PELSWIDTH | win32con.DM_BITSPERPEL | win32con.DM_PELSHEIGHT
+    )
+    result = win32api.ChangeDisplaySettings(devmode, 0)
+    return result == win32con.DISP_CHANGE_SUCCESSFUL
 
 def launch_by_name(app_name):
 
@@ -76,7 +89,9 @@ def start_menu(message):
     bt5 = types.KeyboardButton('Off pc🫪')
     bt6 = types.KeyboardButton('Change wallpaper📃')
     bt7 = types.KeyboardButton('Lauch program by name🚀')
-    markup.add(bt1, bt2, bt3, bt4, bt5, bt6, bt7)
+    bt8 = types.KeyboardButton('open url')
+    bt9 = types.KeyboardButton('change resolution')
+    markup.add(bt1, bt2, bt3, bt4, bt5, bt6, bt7, bt8, bt9)
 
 
     bot.send_message(message.chat.id, 'Choose variant', reply_markup=markup)
@@ -163,4 +178,30 @@ def launch(message):
         bot.send_message(message.chat.id, f'Successful! opens {message.text}')
     else:
         bot.send_message(message.chat.id, 'Erorr')
+@bot.message_handler(func=lambda message: message.text in ['open url'])
+def get_url(message):
+    msg = bot.send_message(message.chat.id, 'Send url: ')
+    bot.register_next_step_handler(msg, open_url)
+def open_url(message):
+    if validators.url(message.text) == True:
+        bot.send_message(message.chat.id, 'Successful! url is correct, opening!')
+        webbrowser.get("brave").open_new(message.text)
+    else:
+        bot.send_message(message.chat.id, 'Wrong url!')
+@bot.message_handler(func=lambda message: message.text in ['change resolution'])
+def select_res(message):
+
+    msg = bot.send_message(message.chat.id, 'Send resolution "1920x1200" format')
+    bot.register_next_step_handler(msg, change_res)
+def change_res(message):
+    if message.text[4] == 'x':
+        width, height = map(int, message.text.split('x'))
+        if width > 0 and height > 0:
+            if width < 1921 and height < 1201:
+                if width > 999 and height > 999:
+                    set_resolution(width, height)
+                    bot.send_message(message.chat.id, f'Selected resolution: {width}x{height}')
+    else:
+        bot.send_message(message.chat.id, 'Wrong resolution')
+ 
 bot.infinity_polling()
